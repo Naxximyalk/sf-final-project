@@ -151,3 +151,70 @@ INNER JOIN transactiontype tt ON t.type_id = tt.type;
 
 ВЫВОД: около 63,5% зарегистрированных пользователей проявляют активность (решают задачи или проходят тесты), отправляя в среднем по 9,35 попыток на одну задачу.
 активные пользователи проходят в среднем 9,18 задач и 1,68 теста, что подтверждает устойчивый интерес к практическому материалу платформы.
+
+--ДОПОЛНИТЕЛЬНОЕ ЗАДАНИЕ
+
+-- 1) Мода: мода по типу списания показывает функционал платформы с максимальным спросом, 
+--за который пользователи готовы платить кодкоинами прямо сейчас. 
+--Знание этой метрики помогает продуктовой команде сформировать наиболее привлекательный наполняющий
+--состав новой подписки, чтобы гарантировать высокую конверсию при переходе к новой модели.
+SELECT mode() WITHIN GROUP (ORDER BY tt.description) AS moda
+FROM transactiontype tt
+inner join transaction t on tt.type = t.type_id 
+where  tt.type in (1, 23, 24, 25, 26, 27, 28, 30)
+
+--% пользователей от числа активных (проходивших тесты или запускавших код), 
+-- которые потратили хотя бы 1 кодкоин на покупку материалов.
+-- позволяет оценить размер платящего сегмента внутри ядра аудитории и спрогнозировать потенциальный Conversion Rate в платную подписку
+WITH active_users AS (
+    SELECT user_id FROM coderun
+    UNION
+    SELECT user_id FROM codesubmit
+    UNION
+    SELECT user_id FROM teststart
+),
+buyers AS (
+    SELECT DISTINCT t.user_id
+    FROM transaction t
+    INNER JOIN transactiontype tt ON t.type_id = tt.type
+    WHERE tt.description ILIKE '%задач%'
+       OR tt.description ILIKE '%подсказк%'
+       OR tt.description ILIKE '%тест%'
+       OR tt.description ILIKE '%решен%'
+)
+SELECT 
+    COUNT(a.user_id) AS active_users,
+    COUNT(b.user_id) AS buyer_users,
+    ROUND(COUNT(b.user_id) * 1.0 / COUNT(a.user_id), 2) AS dolya
+FROM active_users a
+LEFT JOIN buyers b ON a.user_id = b.user_id;
+
+
+-- АВС анализ  по парето разделяет пользователей на три группы 
+--(A, B и C) по их вкладу в общую выручку. это помогает установить адекватную цену подписки,
+--сохранив доход от самых активных покупателей  и минимизировав отток массовой аудитории
+WITH values AS (
+    SELECT 
+        t.user_id, 
+        SUM(t.value) AS sum_value
+    FROM transaction t
+    INNER JOIN transactiontype tt ON t.type_id = tt.type
+    WHERE tt.type IN (1, 23, 24, 25, 26, 27, 28, 30)
+      AND t.value > 0
+    GROUP BY t.user_id
+    ORDER BY sum_value DESC
+),
+accumulation AS (
+    SELECT 
+        user_id, 
+        ROUND(SUM(sum_value) OVER(ORDER BY sum_value DESC) * 100.0 / SUM(sum_value) OVER(), 1) AS nakoplenie
+    FROM values
+)
+SELECT 
+    nakoplenie,
+    CASE
+        WHEN nakoplenie <= 80.0 THEN 'A'
+        WHEN nakoplenie BETWEEN 80.0 AND 95.0 THEN 'B'
+        ELSE 'C'
+    END AS category
+FROM accumulation;
