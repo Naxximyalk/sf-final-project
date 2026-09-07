@@ -1,4 +1,4 @@
-# Задание 1
+<img width="1836" height="232" alt="image" src="https://github.com/user-attachments/assets/5162ce24-9bde-45ed-a17e-f8611f009a9f" /># Задание 1
 
 WITH t1 AS (
     SELECT 
@@ -218,3 +218,69 @@ SELECT
         ELSE 'C'
     END AS category
 FROM accumulation;
+
+
+--ДОПОЛНИТЕЛЬНОЕ ЗАДАНИЕ 2
+-- в какие дни чаще/реже всего люди проявляют активность на платформе
+-- в какое время люди больше/меньше всего решают задачи/тесты на платформе
+WITH active_users2 AS (
+    SELECT user_id, created_at
+    FROM coderun
+    UNION ALL
+    SELECT user_id, created_at 
+    FROM codesubmit
+    UNION ALL
+    SELECT user_id, created_at
+    FROM teststart
+)
+SELECT 
+    TO_CHAR(created_at, 'Dy') AS dayli_activity,
+    EXTRACT(HOUR FROM created_at) AS activity_hour,
+    COUNT(user_id) AS user_quantity
+FROM active_users2
+GROUP BY TO_CHAR(created_at, 'Dy'), EXTRACT(HOUR FROM created_at)
+ORDER BY dayli_activity, activity_hour;
+-- ВЫВОД : анализ активности показывает, что наибольшая нагрузка на платформу приходится на будние дни с дневным и вечерним пиками в 10:00–13:00 и 18:00–19:00. Минимальное число пользователей зафиксировано в ночные часы с 02:00 до 04:00, поэтому технические работы и релизы наиболее оптимально проводить в этот интервал в ночь с субботы на воскресенье.
+
+-- код для вывод графика (тепловой карты) с последующим экспортом в csv и выводом в эксель
+WITH active_users2 AS (
+    SELECT created_at FROM coderun
+    UNION ALL
+    SELECT created_at FROM codesubmit
+    UNION ALL
+    SELECT created_at FROM teststart
+)
+SELECT 
+    EXTRACT(ISODOW FROM created_at) AS day_num,
+    TO_CHAR(created_at, 'Dy') AS day_name,
+    
+    -- Разворачиваем часы в столбцы
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 0 THEN 1 END) AS "00:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 1 THEN 1 END) AS "01:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 2 THEN 1 END) AS "02:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 3 THEN 1 END) AS "03:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 4 THEN 1 END) AS "04:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 5 THEN 1 END) AS "05:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 6 THEN 1 END) AS "06:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 7 THEN 1 END) AS "07:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 8 THEN 1 END) AS "08:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 9 THEN 1 END) AS "09:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 10 THEN 1 END) AS "10:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 11 THEN 1 END) AS "11:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 12 THEN 1 END) AS "12:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 13 THEN 1 END) AS "13:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 14 THEN 1 END) AS "14:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 15 THEN 1 END) AS "15:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 16 THEN 1 END) AS "16:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 17 THEN 1 END) AS "17:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 18 THEN 1 END) AS "18:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 19 THEN 1 END) AS "19:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 20 THEN 1 END) AS "20:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 21 THEN 1 END) AS "21:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 22 THEN 1 END) AS "22:00",
+    COUNT(CASE WHEN EXTRACT(HOUR FROM created_at) = 23 THEN 1 END) AS "23:00"
+FROM active_users2
+GROUP BY day_num, day_name
+ORDER BY day_num;
+<img width="1836" height="232" alt="image" src="https://github.com/user-attachments/assets/b21f62ef-b5bc-465e-ad24-d3370071791e" />
+ВЫВОД ПО ТЕПЛОВОЙ КАРТЕ : пользователи проявляют наибольшую активность в будние дни с четким разделением на дневной (10:00–13:00) и вечерний (18:00–19:00) пики, достигая максимума в четверг в 12:00 (1 214 действий). а наименьшая нагрузка на платформу фиксируется по выходным дням, а абсолютный минимум действий приходится на ночные часы с 01:00 до 04:00. т.е. техническому директору наиболее оптимально выкатывать релизы и проводить обслуживание системы в ночь с субботы на воскресенье с 01:00 до 04:00, когда число активных пользователей падает до 5–6 человек в час
